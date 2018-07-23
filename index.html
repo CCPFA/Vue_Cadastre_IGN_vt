@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no", charset="UTF-8" />
+    <meta http-equiv="x-ua-compatible" content="IE=edge" >
+	<title>Vue Cadastre</title>
+    <!--<script src="https://use.fontawesome.com/9193c58103.js"></script>-->
+    <link href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css' rel='stylesheet' />
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+	<script type="text/javascript"  src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+	<script type="text/javascript"  src="https://unpkg.com/leaflet.vectorgrid@1.3.0"></script>
+    <script src="./src/js/leaflet.filelayer.js"></script>
+    <script src="./src/js/togeojson.js"></script>
+    <script src="./src/js/leaflet.edgebuffer.js"></script>
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.1.1/pouchdb.min.js"></script>-->
+    <!--<script src="https://unpkg.com/leaflet.tilelayer.pouchdbcached@latest/L.TileLayer.PouchDBCached.js"></script>-->
+    <!--<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">-->
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.1/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/leaflet.locatecontrol/0.60.0/L.Control.Locate.min.css" />
+    <script src="https://cdn.jsdelivr.net/leaflet.locatecontrol/0.60.0/L.Control.Locate.min.js"></script>
+    <script src="./src/js/l.control.geosearch.js"></script>
+    <script src="./src/js/l.geosearch.provider.openstreetmap.js"></script>
+    <link rel="stylesheet" href="./src/css/l.geosearch.css" />
+    <link rel="stylesheet" href="./src/leaflet-search.css" />
+    <script src="./src/leaflet-searchc.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-hash/0.2.1/leaflet-hash.min.js"></script>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.css" />
+	<script src="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.min.js"></script>
+	<link rel="stylesheet" href="./src/easy-button.css" />
+	<script src="./src/easy-button.js"></script>
+    <style>
+    #map {
+        position: absolute;
+        top:0;
+        left: 0;
+        right: 0;
+        bottom:0;
+    }
+    .info {
+      text-align: left;
+      line-height: 14px;
+      color: #555;
+      float: left;
+      margin-right: 4px;
+    padding: 5px 20px;
+    font: 12px/14px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.7);
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    border-radius: 5px;
+  }
+  .info h4 {
+    margin: 0 0 5px;
+    color: #777;
+  }
+
+  .legend {
+    text-align: left;
+    line-height: 14px;
+    color: #555;
+  }
+  .legend i {
+    width: 14px;
+    height: 14px;
+    float: left;
+    margin-right: 4px;
+    opacity: 0.7;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    border-radius: 5px;
+  }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+	<div id='delete'></div>
+	<a href='#' id='export'></a>
+    <script type="text/javascript">
+    var CLE_IGN = "waueelcut14w654dbkpq8coh";
+    var url_ign_scan = "https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGN&EXCEPTIONS=text/xml&FORMAT=image/jpeg&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}";
+    var url_ign_parcelaire ="https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=CADASTRALPARCELS.PARCELS&EXCEPTIONS=text/xml&FORMAT=image/png&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=bdparcellaire&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}";
+    //var url_ign_parcelaire_o ="https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=CADASTRALPARCELS.PARCELS&EXCEPTIONS=text/xml&FORMAT=image/png&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=bdparcellaire_o&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}";
+    var url_ign_ortho = "https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=ORTHOIMAGERY.ORTHOPHOTOS&EXCEPTIONS=text/xml&FORMAT=image/jpeg&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}";
+    //var url_ign_ortho = "https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=HR.ORTHOIMAGERY.ORTHOPHOTOS&EXCEPTIONS=text/xml&FORMAT=image/jpeg&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}";
+    var url_ign_lim = "https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=ADMINISTRATIVEUNITS.BOUNDARIES&EXCEPTIONS=text/xml&FORMAT=image/png&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}"
+    var url_ign_noms = "https://gpp3-wxs.ign.fr/"+CLE_IGN+"/wmts?LAYER=GEOGRAPHICALNAMES.NAMES&EXCEPTIONS=text/xml&FORMAT=image/png&SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&STYLE=normal&TILEMATRIXSET=PM&&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}"
+
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 21, maxNativeZoom: 19,
+										 edgeBufferTiles: 2,
+										 //useCache: false,
+										 //crossOrigin: false,
+										 detectRetina: false,
+										 attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'});
+    var osm_light  = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',opacity: 1,
+				maxZoom: 21, maxNativeZoom: 19, //useCache: true,
+				edgeBufferTiles: 2
+				//detectRetina: true,										  
+														  
+		});
+    //var osm_dark  = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',opacity: 1,
+//				maxZoom: 21, maxNativeZoom: 19, //useCache: true,
+				//edgeBufferTiles: 2
+//		});
+    var ign_scan = L.tileLayer(url_ign_scan, {maxZoom: 21, maxNativeZoom: 18,
+					       edgeBufferTiles: 2,
+					      //useCache: true,
+					      //crossOrigin: false,
+					      //detectRetina: true,
+					      attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+    var ign_ortho = L.tileLayer(url_ign_ortho, {maxZoom: 21, maxNativeZoom: 19,
+						 //edgeBufferTiles: 2,
+						//useCache: true,
+						//crossOrigin: false,
+						//detectRetina: true,
+						attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+    var ign_parcelaire = L.tileLayer(url_ign_parcelaire, {maxZoom: 21, maxNativeZoom: 20,
+							   //edgeBufferTiles: 2,
+							  //useCache: true,
+							  //crossOrigin: false,
+							  minZoom:14,
+							  //detectRetina: true,
+							  zIndex: 7 ,attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+   // var ign_parcelaire_o = L.tileLayer(url_ign_parcelaire_o, {maxZoom: 21, maxNativeZoom: 20,
+							  //useCache: true,
+							  //crossOrigin: false,
+//							  detectRetina: true, zIndex: 7 ,attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+    var ign_lim = L.tileLayer(url_ign_lim, {maxZoom: 21, maxNativeZoom: 20,
+					     //edgeBufferTiles: 2,
+					    //useCache: true,
+					    zIndex: 8,
+					    //crossOrigin: false,
+					    //detectRetina: true,
+					    attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+    var ign_noms = L.tileLayer(url_ign_noms, {maxZoom: 21, maxNativeZoom: 20,
+					       //edgeBufferTiles: 2,
+					    //useCache: true,
+					    zIndex: 8,
+					    //crossOrigin: false,
+					    //detectRetina: true,
+					      attribution : '&copy; <a href="http://www.ign.fr/">IGN</a>'});
+
+    var Topo =  L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom: 18, maxNativeZoom: 17,
+										  //edgeBufferTiles: 2,
+										 //useCache: true,
+										 detectRetina: true,
+										 attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'});
+    var carthage = L.tileLayer('https://a.tile.openstreetmap.fr/route500hydro/{z}/{x}/{y}.png', {maxZoom: 19,
+												 //useCache: true,
+												 //crossOrigin: false,
+												  //edgeBufferTiles: 2,
+												 detectRetina: false, zIndex: 8, attribution: '&copy; IGN, BD Carthage' });
+    var geofoncier_sommets= L.tileLayer.wms("https://api.geofoncier.fr/referentielsoge/ogc/wxs?", {layers: 'RFU_FXX_SOMMETS', format: 'image/png', maxZoom: 20, detectRetina: false, zIndex: 12, transparent: true, attribution: "© GéoFoncier"});
+    var geofoncier_limites= L.tileLayer.wms("https://api.geofoncier.fr/referentielsoge/ogc/wxs?", {layers: 'RFU_FXX_LIMITES', format: 'image/png', maxZoom: 20, detectRetina: false, zIndex: 11, transparent: true});
+
+    var baseMaps = {
+    "OSM": osm,
+    "OSM Clair": osm_light,
+   // "OSM Sombre": osm_dark,
+    "Ortho IGN":ign_ortho,
+    "Cartes IGN":ign_scan,
+    "Topo" : Topo
+    };
+
+	var overlays = {
+	  "Parcelaire IGN":ign_parcelaire,
+      "Limites adm.": ign_lim,
+	  "GeoFoncier": geofoncier_sommets,
+	  "Rivières": carthage
+       };
+
+	var map = L.map('map', {
+	    center: [46.5,2.34],
+            zoom: 5,
+	    //center: [45.1885,5.7245],
+	    //zoom: 13,
+	    layers: [osm_light, ign_parcelaire]
+	});
+	var hash = new L.Hash(map);
+	L.control.layers(baseMaps,overlays).addTo(map);
+	ign_ortho.setOpacity(0.5);
+	geofoncier_limites.setOpacity(0);
+        map.addLayer(geofoncier_limites)
+
+
+	var style = {color:'red', opacity: 1.0, fillOpacity: 0.1, weight: 2, clickable: true};
+	var geojsonMarkerOptions = {
+          radius: 8,
+          fillColor: "#ff7800",
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+          };
+
+        var PIcon = L.AwesomeMarkers.icon({icon: 'check', markerColor: 'green', prefix: 'fa', iconColor: 'white'});
+        var CIcon = L.AwesomeMarkers.icon({icon: 'gift', markerColor: 'darkblue', prefix: 'fa', iconColor: 'white'});
+        var MIcon = L.AwesomeMarkers.icon({icon: 'exchange', markerColor: 'purple', prefix: 'fa', iconColor: 'white'});
+        var DIcon = L.AwesomeMarkers.icon({icon: 'user', markerColor: 'blue', prefix: 'fa', iconColor: 'white'});
+        var DAIcon = L.AwesomeMarkers.icon({icon: 'user', markerColor: 'gray', prefix: 'fa', iconColor: 'white'});
+        var ZIcon = L.AwesomeMarkers.icon({icon: 'warning', markerColor: 'red', prefix: 'fa', iconColor: 'white'});
+        var EIcon = L.AwesomeMarkers.icon({icon: 'exclamation-circle', markerColor: 'orange', prefix: 'fa', iconColor: 'white'});
+
+        var styleP =  {color:'#008000', opacity: 1.0, fillOpacity: 0.5, weight: 1, clickable: true};
+        var styleC =  {color:'#ffa07a', opacity: 1.0, fillOpacity: 0.5, weight: 1, clickable: true};
+        var styleM =  {color:'#da70d6', opacity: 1.0, fillOpacity: 0.5, weight: 1, clickable: true};
+        var styleD =  {color:'#666', opacity: 1.0, fillOpacity: 0.3, weight: 1, clickable: true};//#38a9dc', opacity: 0.0, fillOpacity: 0.1, weight: 1, clickable: true};
+        var styleDA =  {color:'#666', opacity: 1.0, fillOpacity: 0.0, weight: 1, clickable: true};//#38a9dc', opacity: 0.0, fillOpacity: 0.1, weight: 1, clickable: true};
+        var styleZ =  {color:'#ff0000', opacity: 1.0, fillOpacity: 0.7, weight: 1, clickable: true};
+        var styleE =  {color:'#ffff00', opacity: 1.0, fillOpacity: 0.6, weight: 1, clickable: true};
+	var styleF =  {fillColor:'#666', color:'#ff0000', opacity: 1.0, fillOpacity: 0.3, weight: 2, dashArray: '5', clickable: true};
+	var style2F =  {fillColor:'#666', color:'#666', opacity: 1.0, fillOpacity: 0.0, weight: 2, dashArray: '5', clickable: true};
+	var stylePF =  {fillColor:'#008000', color:'#ff0000',  opacity: 1.0, fillOpacity: 0.5, weight: 2, dashArray: '5', clickable: true};
+	var styleMF =  {fillColor:'#da70d6', color:'#ff0000', opacity: 1.0, fillOpacity: 0.5, weight: 2, dashArray: '5', clickable: true};
+	var styleCF =  {fillColor:'#ffa07a', color:'#ff0000', opacity: 1.0, fillOpacity: 0.5, weight: 2, dashArray: '5', clickable: true};
+	var styleEF =  {fillColor:'#ffff00', color:'#ff0000', opacity: 1.0, fillOpacity: 0.6, weight: 2, dashArray: '5', clickable: true};
+	var styleZF =  {fillColor:'#ff0000', color:'#ff0000', opacity: 1.0, fillOpacity: 0.7, weight: 2, dashArray: '5', clickable: true};
+        
+	var style_avec =    {fillColor:false,color:'OrangeRed ', opacity: 1.0, weight: 2, clickable: true, fillOpacity:0};
+	var style_sans =    {fillColor:false,color:'lime', opacity: 1.0, weight: 2, dashArray: '5',clickable: true, fillOpacity:0};    
+	
+	var customOptions =
+	        {
+	        'maxWidth': '400',
+					'maxHeight': '400',
+	        'className' : 'custom'
+	        }
+	
+	var customOptionsF =
+	        {
+	        'maxWidth': '500',
+					'maxHeight': '400',
+	        'className' : 'custom'
+	        }
+	L.Control.FileLayerLoad.LABEL = '<i class="fa fa-folder-open"></i>';// '⌘';
+	var control = new L.Control.fileLayerLoad({
+            fileSizeLimit: 256000,
+
+			}
+
+           ).addTo(map);
+	   
+	   
+
+           control.loader.on('data:loaded', function (e) {
+		   var highlight;
+			var clearHighlight = function() {
+				if (highlight) {
+					vg_parcelles.resetFeatureStyle(highlight);
+				}
+				highlight = null;
+			};
+			data=JSON.parse(e.result);
+			
+			var vg_parcelles = L.vectorGrid.slicer( data, {
+				rendererFactory: L.canvas.tile,
+				attribution: 'CC-PFA',
+				maxZoom: 22,
+				zIndex:150,			// max zoom to preserve detail on
+				tolerance: 5, // simplification tolerance (higher means simpler)
+				extent: 1024, // tile extent (both width and height)
+				buffer: 64,   // tile buffer on each side
+				debug: 0,      // logging level (0 to disable, 1 or 2)
+				vectorTileLayerStyles: {
+					sliced: function(properties, zoom) {
+						var p = properties.PCM;
+						return {
+							fillColor: 	(p === "P" ||p==="PF" )? '#008000' :
+										(p === "C"|| p === "CF")? '#ffa07a' :
+										(p === "M"|| p === "MF")? '#da70d6' :
+										(p === "E"|| p === "EF")? '#ffff00' :
+										(p ==="ZF"|| p==='Z')? '#ff0000' :'#666',
+
+							fillOpacity:	(p==='PF'||p ==='CF'||p ==='MF'||p ==='2F'||p==='P'||p ==='C'||p ==='M'||p ==='2') ? 0.5 :
+											(p ==="ZF"||p ==="EF"||p ==="E"||p ==="Z") ? 0.7 :0,
+							stroke: true,
+							fill: true,
+							dashArray: (p==='EF'||p ==='ZF')||(p==='PF'||p ==='CF'||p ==='MF'||p ==='2F'||p ==='2AF')? '3':'0',
+									
+							color: 	(p==='EF'||p ==='ZF'||p==='Z')||(p==='PF'||p ==='CF'||p ==='MF'||p ==='2F')? '#ff0000':
+									(p ==='E')? '#ffff00':'#666',
+									
+ 							opacity: 1,
+							weight: 1,
+						}
+					}
+				},
+				interactive: true,
+				getFeatureId: function(p) {
+					return p.properties.id;
+				}
+			})
+			.on('mouseover', function(e) {
+				var properties = e.layer.properties;
+				clearHighlight();
+				highlight = properties.id;
+				var p = properties.PCM;
+				var style = {
+							fillColor: 	(p === "P" ||p==="PF" )? '#008000' :
+										(p === "C"|| p === "CF")? '#ffa07a' :
+										(p === "M"|| p === "MF")? '#da70d6' :
+										(p === "E"|| p === "EF")? '#ffff00' :
+										(p ==="ZF"|| p==='Z')? '#ff0000' :'#666',
+
+							fillOpacity:	1,
+							stroke: true,
+							fill: true,
+							dashArray: (p==='EF'||p ==='ZF')||(p==='PF'||p ==='CF'||p ==='MF'||p ==='2F'||p ==='2AF')? '3':'0',
+									
+							color: 'deepskyblue',
+									
+ 							opacity: 1,
+							weight: 2,
+				};
+
+			vg_parcelles.setFeatureStyle(properties.id, style);
+		})
+		.on('click', function(e) {
+			var properties = e.layer.properties;
+			L.popup()
+				.setContent(properties.Description)
+				.setLatLng(e.latlng)
+				.openOn(map);
+				}).addTo(map);
+				
+		 // Remove old control, if any
+		 if (window.searchControl)
+             {
+               map.removeControl(window.searchControl);
+             }
+		console.log(data);
+             // Add search gadget for this layer
+		var s_parcelles = L.geoJSON(data); 
+		window.searchControl = new L.Control.Search({
+			layer: s_parcelles,
+			propertyName: 'rec',
+		   initial: false,
+		   textErr: 'Parcelle non trouvée',	//error message
+			textCancel: 'Annuler',		    //title in cancel button
+			textPlaceholder: 'Rechercher une parcelle...',
+		   minLength: 0,					//minimal text length for autocomplete
+			casesensitive: false,			//search elements in case sensitive text
+			autoType: true,
+		   firstTipSubmit: true,			//auto select first result con enter click
+			  autoResize: true,
+		   tooltipLimit: 5,
+		   moveToLocation: function(latlng, title, map) {
+			var zoom = map.getBoundsZoom(latlng.layer.getBounds());
+			map.setView(latlng, zoom); // access the zoom
+			}
+            });
+			map.fitBounds(s_parcelles.getBounds());
+             map.addControl(window.searchControl);
+			 
+	     var legend = L.control({position: 'bottomright'});
+	       legend.onAdd = function (map) {
+
+          var div = L.DomUtil.create('div', 'info legend'),
+          couleurs = ['#008000', '#ffa07a', '#da70d6', '#666','#ffff00','#ff0000'],
+          valeurs = ['Privé', 'Concédé', 'Mixte', 'Tiers','Écart','Absence'],
+          labels = ['<strong>Légende:</strong>']
+
+
+
+          for (var i = 0; i < couleurs.length; i++) {
+                 col = couleurs [i];
+                vf=valeurs [i];
+            labels.push(
+                '<i style="background:' + col + '"></i> ' + vf );
+                }
+                div.innerHTML = labels.join('<br>');
+                return div;
+                };
+	  if (!(map.legenddisplay)) {
+          legend.addTo(map);
+          map.legenddisplay = this;}
+
+
+
+           });
+           
+	//map.on('baselayerchange',function(eo)
+	//  {
+	//   if( eo.name == "OSM Sombre" &&  map.hasLayer(ign_parcelaire)) {
+	//     map.removeLayer(ign_parcelaire);
+	//	 map.addLayer(ign_parcelaire_o);
+	//   }
+	// })	
+	
+	 map.on('zoomend',function(e){
+		 zoomlev=map.getZoom();
+		 if (zoomlev<14){
+	     ign_scan.setOpacity(1);
+	     ign_ortho.setOpacity(1);
+	     osm.setOpacity(1);
+	     //osm_light.setOpacity(1);
+	     Topo.setOpacity(1);}
+	 
+	       else{if (map.hasLayer(ign_parcelaire)){
+	     ign_scan.setOpacity(0.5);
+	     ign_ortho.setOpacity(0.5);
+	     osm.setOpacity(0.5);
+	     //osm_light.setOpacity(0.8);
+	     Topo.setOpacity(0.5);
+	     //ign_lim.addTo(map);
+	     }
+	    }
+	 }
+	 )
+	  
+	 map.on('overlayadd', function(eo)
+	  {
+	   if( eo.name == 'Parcelaire IGN' ) {
+	     ign_scan.setOpacity(0.5);
+	     ign_ortho.setOpacity(0.5);
+	     osm.setOpacity(0.5);
+	     //osm_light.setOpacity(0.8);
+	     Topo.setOpacity(0.5);
+	     //ign_lim.addTo(map);
+	   }
+	 })
+	    
+	map.on('overlayremove', function(eo)
+	 {
+	   if( eo.name == 'Parcelaire IGN' &&  !(map.hasLayer(geofoncier_sommets))) {
+	     ign_scan.setOpacity(1);
+	     ign_ortho.setOpacity(1);
+	     osm.setOpacity(1);
+	     //osm_light.setOpacity(1);
+	     Topo.setOpacity(1);
+	     //map.removeLayer(ign_lim)(map);
+	   }
+	})
+	    
+	map.on('overlayadd', function(eo)
+        {
+          if( eo.name == 'Limites adm.' ) {
+            map.addLayer(ign_noms)
+          }
+        })
+	map.on('overlayremove', function(eo)
+        {
+          if( eo.name == 'Limites adm.' ) {
+            map.removeLayer(ign_noms)
+          }
+        })   
+	map.on('overlayadd', function(eo)
+        {
+          if( eo.name == 'GeoFoncier' ) {
+            geofoncier_limites.setOpacity(1),
+	     ign_scan.setOpacity(0.5);
+	     ign_ortho.setOpacity(0.5);
+	     osm.setOpacity(0.5);
+	     //osm_light.setOpacity(0.8);
+	     Topo.setOpacity(0.5)
+          }
+        })
+        map.on('overlayremove', function(eo)
+        {
+          if( eo.name == 'GeoFoncier'  &&  !(map.hasLayer(ign_parcelaire))) {
+            geofoncier_limites.setOpacity(0);
+	     ign_scan.setOpacity(1);
+	     ign_ortho.setOpacity(1);
+	     osm.setOpacity(1);
+	     //osm_light.setOpacity(1);
+	     Topo.setOpacity(1);
+          }
+	  if( eo.name == 'GeoFoncier'  &&  map.hasLayer(ign_parcelaire)) {
+            geofoncier_limites.setOpacity(0);
+	   
+          }
+       })
+
+
+	L.control.scale({imperial: false}).addTo(map);
+	
+	new L.Control.GeoSearch({
+	  provider: new L.GeoSearch.Provider.OpenStreetMap(),
+	    position: 'topleft',
+	    showMarker: true,
+	    retainZoomLevel: false,
+	    }).addTo(map);
+	    
+	 var lc = L.control.locate({
+    	     position: 'topleft',
+             flyTo : true,
+	     locateOptions: {
+               enableHighAccuracy: true,
+	       maxZoom: 18,
+             },
+             strings: {
+             title: "Se localiser"
+             }
+             }).addTo(map);
+
+			  // define toolbar options
+var optionspm = {
+    position: 'bottomleft', // toolbar position, options are 'topleft', 'topright', 'bottomleft', 'bottomright'
+    drawMarker: true, // adds button to draw markers
+    drawPolyline: true, // adds button to draw a polyline
+    drawRectangle: false, // adds button to draw a rectangle
+    drawPolygon: true, // adds button to draw a polygon
+    drawCircle: false, // adds button to draw a cricle
+    cutPolygon: false, // adds button to cut a hole in a polygon
+    editMode: false, // adds button to toggle edit mode for all layers
+    removalMode: true, // adds a button to remove layers
+};
+
+// add leaflet.pm controls to the map
+map.pm.addControls(optionspm);
+
+	    
+// optional options for line style during draw. These are the defaults
+var options = {
+    // snapping
+    snappable: true,
+    snapDistance: 60,
+
+    // self intersection
+    allowSelfIntersection: true,
+
+    // the lines between coordinates/markers
+    templineStyle: {
+        color: 'red',
+    },
+
+    // the line from the last marker to the mouse cursor
+    hintlineStyle: {
+        color: 'red',
+        dashArray: [5, 5],
+    },
+
+    // show a marker at the cursor
+    cursorMarker: false,
+
+    // finish drawing on double click
+    // DEPRECATED: use finishOn: 'dblclick' instead
+    finishOnDoubleClick: false,
+
+    // specify type of layer event to finish the drawn shape
+    // example events: 'mouseout', 'dblclick', 'contextmenu'
+    // List: http://leafletjs.com/reference-1.2.0.html#interactive-layer-click
+    finishOn: 'contextmenu',
+
+    // custom marker style (only for Marker draw)
+    markerStyle: {
+        opacity: 0.5,
+        draggable: true,
+    },
+};
+
+// enable drawing mode for shape - e.g. Poly, Line, etc
+map.pm.enableDraw('Poly', options);
+//map.pm.enableDraw('Rectangle', options);
+map.pm.enableDraw('Line', options);
+map.pm.enableDraw('Marker', options);
+//map.pm.enableDraw('Circle', options);
+map.pm.disableGlobalEditMode()
+	    
+function downloadURI(uri, name) {
+  var link = document.createElement("a");
+  link.download = name;
+  link.href = uri;
+  link.target="_blank";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  delete link;
+  console.log(link);
+}
+
+
+function redirect(geom)
+{
+var timestamp = showTime();
+    window.location.href = "mailto:emmanuel.amador@edf.fr?subject=Nouvelle géométrie "+"("+timestamp+")"+"&body="+geom;
+}
+
+
+
+const myLayerGroup = L.layerGroup([]);
+map.on('pm:create', (e) => {
+  
+  var nom = prompt("Entrer un nom", "");
+  e.layer.bindTooltip("<span style='font-size:16px'><b>"+nom+"</b></span>");
+  
+  var feature = e.layer.feature = e.layer.feature || {};
+	feature.type = "Feature";
+	feature.properties = feature.properties || {};
+	feature.properties["Nom"] = nom;
+	feature.properties["created"]=showTime();
+	console.log(e.shape)
+	if (e.shape==="Circle"){
+	var rad = e.layer.getRadius();
+	feature.properties["radius"] = rad;
+	}
+  myLayerGroup.addLayer(e.layer);
+});
+
+
+        // on click, clear all layers 
+        document.getElementById('delete').onclick = function(e) {
+            myLayerGroup.clearLayers();
+        }
+
+        document.getElementById('export').onclick = function(e) {
+            // Extract GeoJson from featureGroup 
+           var data_drawn = myLayerGroup.toGeoJSON();
+			//var data_drawn =map.pm.Draw.getShapes();
+            // Stringify the GeoJson 
+            var convertedData = 'text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data_drawn));
+
+            <!-- // Create export -->
+            document.getElementById('export').setAttribute('href', 'data:' + convertedData);
+            document.getElementById('export').setAttribute('download','data.geojson'); 
+        } 
+function showTime() {
+Date.prototype.toIsoString = function() {
+    var tzo = -this.getTimezoneOffset(),
+        dif = tzo >= 0 ? '+' : '-',
+        pad = function(num) {
+            var norm = Math.floor(Math.abs(num));
+            return (norm < 10 ? '0' : '') + norm;
+        };
+    return this.getFullYear() +
+        '-' + pad(this.getMonth() + 1) +
+        '-' + pad(this.getDate()) +
+        'T' + pad(this.getHours()) +
+        '-' + pad(this.getMinutes()) +
+        '-' + pad(this.getSeconds()) +
+        dif + pad(tzo / 60) +
+        '-' + pad(tzo % 60);
+}
+
+var dt = new Date();
+return dt.toIsoString().substring(0, 19);
+}
+
+L.easyButton( 'fa-at', function(e){
+		
+		var data_drawn = myLayerGroup.toGeoJSON();
+			//var data_drawn =map.pm.Draw.getShapes();
+            // Stringify the GeoJson 
+            <!-- // Create export -->
+			
+			redirect(encodeURIComponent(JSON.stringify(data_drawn)));//downloadURI(convertedData, "Geom.geojson");
+            //document.getElementById('export').setAttribute('href', 'data:' + convertedData);
+            //document.getElementById('export').setAttribute('download','data.geojson'); 
+		
+		}).addTo(map);
+		
+L.easyButton( 'fa-download', function(e){
+		
+		var data_drawn = myLayerGroup.toGeoJSON();
+			//var data_drawn =map.pm.Draw.getShapes();
+            // Stringify the GeoJson 
+			var timestamp=showTime().replace(':','_');
+            var convertedData = 'application/force-download;charset=utf-8,' + encodeURIComponent(JSON.stringify(data_drawn));
+			downloadURI('data:' + convertedData, "Geom"+timestamp+".geojson"); 
+		
+		}).addTo(map);
+  
+
+    </script>
+</body>
+</html>
